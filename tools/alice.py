@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """Alice Nation / Alice Nation Demo (爱丽丝与彼岸) 한국어 패치 관리 도구.
 
-  python tools/alice.py check   [--game DIR]          게임과 번역 비교 -> work/todo_*.json
-  python tools/alice.py merge   FILE [FILE ...]       번역 결과 반영 + 원문해시 기록
-  python tools/alice.py images  [--game DIR]          번역 대상 이미지 원본 추출 -> work/images_src/, work/todo_images.json
-  python tools/alice.py build   [--game DIR] [--install] [--allow-stale]
-                                                      덮어쓰기용 zip 생성 (dist/)
+  python tools/alice.py check   [--target T] [--game DIR]   게임과 번역 비교 -> work/<T>/todo_*.json
+  python tools/alice.py merge   [--target T] FILE [FILE ...] 번역 결과 반영 + 원문해시 기록
+  python tools/alice.py images  [--target T] [--game DIR]   번역 대상 이미지 원본 추출 -> work/<T>/images_src/, todo_images.json
+  python tools/alice.py build   [--target T] [--game DIR] [--install] [--allow-stale]
+                                                             덮어쓰기용 zip 생성 (dist/)
 
+대상(--target): full = 정식판 Alice Nation(기본), demo = Alice Nation Demo.
+  공용: translations/loc.ko.json, story.ko.json (데모 번역이 정식판에 그대로 이어짐)
+  게임별: translations/ui_prefab.<T>.ko.json, meta/<T>/, VERSION.json 의 "<T>" 항목, work/<T>/
 게임 폴더: --game > 환경변수 ALICE_GAME > Steam 라이브러리에서 VERSION.json 의 steam_appid 설치 경로 자동 탐색.
 번역은 게임의 "English" 슬롯에 들어간다(게임 언어 메뉴의 English 자리가 "한국어"로 바뀜).
 - 번역표   : resources.assets 의 LocalizationConfig_EN (키 -> 한국어)
@@ -37,13 +40,25 @@ from UnityPy.helpers.TypeTreeNode import TypeTreeNode
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TR_DIR = os.path.join(ROOT, "translations")
-META_DIR = os.path.join(ROOT, "meta")
-WORK_DIR = os.path.join(ROOT, "work")      # git-ignored: 게임 원문·원본 백업·이미지
+TR_DIR = os.path.join(ROOT, "translations")   # loc / story 번역은 정식판·데모 공용
 DIST_DIR = os.path.join(ROOT, "dist")      # git-ignored: 배포 zip
-IMG_DIR = os.path.join(WORK_DIR, "images")  # title/ tutorial/ help/ misc/ (한국어 PNG)
-SRC_IMG_DIR = os.path.join(WORK_DIR, "images_src")  # 번역 대상 이미지 원본 (images 명령)
-ORIG_DIR = os.path.join(WORK_DIR, "orig")   # 게임 원본 백업 (패치본 위에서 다시 빌드할 때 사용)
+STORY_SRC = os.path.join(ROOT, "work", "story_src.json")   # 번역된 대사 원문 기록(정식판·데모 공용)
+TARGETS = ("full", "demo")
+
+
+def set_target(t):
+    """정식판(full) / 데모(demo) 별로 따로 두는 것: 원문 해시(meta/<t>/), UI 번역, 작업 폴더(work/<t>/)"""
+    global TARGET, META_DIR, UI_TR, WORK_DIR, IMG_DIR, SRC_IMG_DIR, ORIG_DIR
+    TARGET = t
+    META_DIR = os.path.join(ROOT, "meta", t)
+    UI_TR = os.path.join(TR_DIR, f"ui_prefab.{t}.ko.json")   # 번들 객체 ID 가 빌드마다 달라 게임별
+    WORK_DIR = os.path.join(ROOT, "work", t)      # git-ignored: 게임 원문·원본 백업·이미지
+    IMG_DIR = os.path.join(WORK_DIR, "images")  # title/ tutorial/ help/ misc/ (한국어 PNG)
+    SRC_IMG_DIR = os.path.join(WORK_DIR, "images_src")  # 번역 대상 이미지 원본 (images 명령)
+    ORIG_DIR = os.path.join(WORK_DIR, "orig")   # 게임 원본 백업 (패치본 위에서 다시 빌드할 때 사용)
+
+
+set_target("full")
 
 STEAM_DEFAULT = r"C:\Program Files (x86)\Steam"
 TEXT_CLASSES = ("Config.LocalizationConfig", "Story.LiluoScript")
@@ -101,7 +116,14 @@ def stem(rel):
 
 
 def config():
-    return jload(os.path.join(ROOT, "VERSION.json"))
+    """VERSION.json = {"full": {...}, "demo": {...}} 중 현재 대상"""
+    return jload(os.path.join(ROOT, "VERSION.json")).get(TARGET, {})
+
+
+def save_config(ver):
+    allv = jload(os.path.join(ROOT, "VERSION.json"))
+    allv[TARGET] = ver
+    jsave(os.path.join(ROOT, "VERSION.json"), allv)
 
 
 # ---------------------------------------------------------------- 게임 위치·구조
@@ -322,7 +344,7 @@ def font_report(game):
     for f in ("loc.ko.json", "story.ko.json"):
         for v in jload(os.path.join(TR_DIR, f)).values():
             used |= set(HANGUL.findall(v))
-    for m in jload(os.path.join(TR_DIR, "ui_prefab.ko.json")).values():
+    for m in jload(UI_TR).values():
         for v in m.values():
             used |= set(HANGUL.findall(v))
     res = []
@@ -369,20 +391,33 @@ def cmd_check(a):
         todo_loc.append(dict(id=k, cn=cn, en=v.get("EN", ""), jp=v.get("JA", ""), status=st, prev_ko=tr_loc.get(k)))
     gone_loc = [k for k in tr_loc if k not in loc]
 
+    tm = {src_of(v): dict(ko=tr_loc[k], key=k) for k, v in loc.items() if k in tr_loc and src_of(v)}   # 번역 메모리(API 번역 참고용)
     en_by_text = {k: v.get("EN", "") for k, v in loc.items() if CJK.search(k)}
     todo_story, seen = [], set()
+    # 번역된 대사의 원문 기록 {본문 해시: {cn, dir, script}} — 업데이트로 원문이 바뀌어 게임에서 사라져도 이전 번역을 참고하려고
+    story_src = jload(STORY_SRC)
     for name, lines in story.items():
-        for c in lines:
+        for n, c in enumerate(lines):
             if not c or not CJK.search(c):
                 continue
-            body = split_dir(c)[1]
+            d, body = split_dir(c)
             i = h12(body)
-            if story_ko(tr_story, c) is not None or i in seen:
+            ko = story_ko(tr_story, c)
+            if ko is not None:
+                tm.setdefault(body, dict(ko=ko, key=name, dir=d.strip()))
+                story_src[i] = dict(cn=body, dir=d.strip(), script=name)
+                continue
+            if i in seen:
                 continue
             seen.add(i)
-            todo_story.append(dict(id=i, script=name, cn=body, en=en_by_text.get(body, ""), status="신규"))
+            ctx = [dict(dir=split_dir(x)[0].strip(), cn=split_dir(x)[1], ko=story_ko(tr_story, x) or "")
+                   for x in lines[max(0, n - 3):n] if x and CJK.search(x)]   # 앞 대사(번역 문맥)
+            todo_story.append(dict(id=i, script=name, n=n, dir=d.strip(), cn=body, en=en_by_text.get(body, ""), status="신규", ctx=ctx))
+    for i, s in story_src.items():   # 지금 게임에는 없는 대사의 이전 번역
+        if i in tr_story:
+            tm.setdefault(s["cn"], dict(ko=tr_story[i], key=s["script"] + "(이전 버전)", dir=s["dir"]))
 
-    tr_ui, meta_ui = jload(os.path.join(TR_DIR, "ui_prefab.ko.json")), jload(os.path.join(META_DIR, "ui_prefab.srchash.json"))
+    tr_ui, meta_ui = jload(UI_TR), jload(os.path.join(META_DIR, "ui_prefab.srchash.json"))
     todo_ui, cand, seen_b, seen_p = [], [], set(), set()
     for rel in game.find(game.sw + "/prefabs_assets_assets/**/*.bundle"):
         s = stem(rel)
@@ -401,6 +436,7 @@ def cmd_check(a):
             pid = str(o.path_id)
             seen_p.add((s, pid))
             if pid in tr_ui.get(s, {}):
+                tm.setdefault(v, dict(ko=tr_ui[s][pid], key=s))
                 if meta_ui.get(s, {}).get(pid) != h12(v):
                     todo_ui.append(dict(bundle=s, id=pid, cn=v, status="원문변경", prev_ko=tr_ui[s][pid]))
             elif CJK.search(v) or v.strip() == "English":   # English = 언어 메뉴(한국어로 바꿀 자리)
@@ -418,6 +454,8 @@ def cmd_check(a):
     jsave(os.path.join(WORK_DIR, "todo_story.json"), todo_story)
     jsave(os.path.join(WORK_DIR, "todo_ui_prefab.json"), todo_ui + cand)
     jsave(os.path.join(WORK_DIR, "todo_images.json"), [r for r in img_rows if r["status"] != "번역됨"])
+    jsave(os.path.join(WORK_DIR, "tm.json"), tm)
+    jsave(STORY_SRC, story_src)
     n = lambda L, s: sum(1 for x in L if x["status"] == s)
     print(f"번역표   : 신규 {n(todo_loc, '신규')} / 원문변경 {n(todo_loc, '원문변경')} / 삭제 {len(gone_loc)}")
     print(f"스토리   : 신규 {len(todo_story)}")
@@ -452,14 +490,14 @@ def cmd_merge(a):
                 tr[k] = split_dir(v)[1]
             jsave(os.path.join(TR_DIR, "story.ko.json"), tr)
         elif "ui_prefab" in base:
-            tr, meta = jload(os.path.join(TR_DIR, "ui_prefab.ko.json")), jload(os.path.join(META_DIR, "ui_prefab.srchash.json"))
+            tr, meta = jload(UI_TR), jload(os.path.join(META_DIR, "ui_prefab.srchash.json"))
             todo = {(x["bundle"], x["id"]): x["cn"] for x in jload(os.path.join(WORK_DIR, "todo_ui_prefab.json"), [])}
             for s, m in d.items():
                 for pid, v in m.items():
                     tr.setdefault(s, {})[pid] = v
                     if (s, pid) in todo:
                         meta.setdefault(s, {})[pid] = h12(todo[(s, pid)])
-            jsave(os.path.join(TR_DIR, "ui_prefab.ko.json"), tr)
+            jsave(UI_TR, tr)
             jsave(os.path.join(META_DIR, "ui_prefab.srchash.json"), meta)
         elif "loc" in base:
             tr, meta = jload(os.path.join(TR_DIR, "loc.ko.json")), jload(os.path.join(META_DIR, "loc.srchash.json"))
@@ -681,7 +719,7 @@ def build_images(game, out_dir, stats):
 
 
 def build_prefab_text(game, out_dir, stats):
-    tr, meta = jload(os.path.join(TR_DIR, "ui_prefab.ko.json")), jload(os.path.join(META_DIR, "ui_prefab.srchash.json"))
+    tr, meta = jload(UI_TR), jload(os.path.join(META_DIR, "ui_prefab.srchash.json"))
     outs, applied, stale = [], 0, 0
     for rel in game.find(game.sw + "/prefabs_assets_assets/**/*.bundle"):
         m = tr.get(stem(rel))
@@ -790,7 +828,7 @@ def cmd_build(a):
         for rel in files:
             z.write(os.path.join(out_dir, rel), rel)
     ver.update(built=datetime.date.today().isoformat(), game_buildid=game.buildid, patch_version=pver, stats=stats)
-    jsave(os.path.join(ROOT, "VERSION.json"), ver)
+    save_config(ver)
     print(json.dumps(stats, ensure_ascii=False, indent=1))
     print(f"-> {zp} ({len(files)}개 파일)")
 
@@ -817,10 +855,12 @@ def main():
     i.add_argument("--record-notext", action="store_true", help="번역 이미지가 없는 신규 대상을 '글자 없음 확인됨'으로 기록(직접 확인 후)")
     b = sub.add_parser("build")
     for p in (c, m, i, b):
+        p.add_argument("--target", choices=TARGETS, default="full", help="full = 정식판(기본), demo = 데모")
         p.add_argument("--game", default=None)
     b.add_argument("--install", action="store_true")
     b.add_argument("--allow-stale", action="store_true")
     a = ap.parse_args()
+    set_target(a.target)
     {"check": cmd_check, "merge": cmd_merge, "images": cmd_images, "build": cmd_build}[a.cmd](a)
 
 

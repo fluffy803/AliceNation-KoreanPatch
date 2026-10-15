@@ -1,35 +1,42 @@
 {
- "built": "2026-10-12",
- "game_buildid": "25833077",
- "package": "AliceNationDemo",
- "patch_version": "0.9.11",
- "stats": {
-  "catalog_crc_disabled": 267,
-  "font": {
-   "fallback_added": [
-    "OPPOSans-MSDF"
-   ],
-   "hangul_missing": 0,
-   "hangul_used": 1082,
-   "korean_font": "Lolita SDF"
+ "demo": {
+  "built": "2026-10-15",
+  "game_buildid": "25911555",
+  "package": "AliceNationDemo",
+  "patch_version": "0.9.12",
+  "stats": {
+   "catalog_crc_disabled": 269,
+   "font": {
+    "fallback_added": [
+     "OPPOSans-MSDF"
+    ],
+    "hangul_missing": 0,
+    "hangul_used": 1082,
+    "korean_font": "Lolita SDF"
+   },
+   "images": {
+    "applied": 34,
+    "missing": []
+   },
+   "loc": {
+    "applied": 1653,
+    "stale_skipped": 0,
+    "untranslated": 0
+   },
+   "story": {
+    "applied": 2412,
+    "untranslated": 0
+   },
+   "ui_prefab": {
+    "applied": 142,
+    "stale_skipped": 0
+   }
   },
-  "images": {
-   "applied": 34,
-   "missing": []
-  },
-  "loc": {
-   "applied": 1641,
-   "stale_skipped": 0,
-   "untranslated": 0
-  },
-  "story": {
-   "applied": 2415,
-   "untranslated": 0
-  },
-  "ui_prefab": {
-   "applied": 142,
-   "stale_skipped": 0
-  }
+  "steam_appid": "4556260"
  },
- "steam_appid": "4556260"
+ "full": {
+  "package": "AliceNation",
+  "patch_version": "1.0.0",
+  "steam_appid": "3755350"
+ }
 }
