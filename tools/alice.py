@@ -9,6 +9,7 @@
 
 대상(--target): full = 정식판 Alice Nation(기본), demo = Alice Nation Demo.
   공용: translations/loc.ko.json, story.ko.json (데모 번역이 정식판에 그대로 이어짐)
+        단, 같은 키인데 게임마다 원문이 다른 번역표 항목은 translations/loc.<T>.ko.json (merge 가 자동으로 나눔)
   게임별: translations/ui_prefab.<T>.ko.json, meta/<T>/, VERSION.json 의 "<T>" 항목, work/<T>/
 게임 폴더: --game > 환경변수 ALICE_GAME > Steam 라이브러리에서 VERSION.json 의 steam_appid 설치 경로 자동 탐색.
 번역은 게임의 "English" 슬롯에 들어간다(게임 언어 메뉴의 English 자리가 "한국어"로 바뀜).
@@ -48,8 +49,9 @@ TARGETS = ("full", "demo")
 
 def set_target(t):
     """정식판(full) / 데모(demo) 별로 따로 두는 것: 원문 해시(meta/<t>/), UI 번역, 작업 폴더(work/<t>/)"""
-    global TARGET, META_DIR, UI_TR, WORK_DIR, IMG_DIR, SRC_IMG_DIR, ORIG_DIR
+    global TARGET, META_DIR, UI_TR, LOC_OWN, WORK_DIR, IMG_DIR, SRC_IMG_DIR, ORIG_DIR
     TARGET = t
+    LOC_OWN = os.path.join(TR_DIR, f"loc.{t}.ko.json")   # 같은 키인데 게임마다 원문이 다른 항목만(공용 번역표보다 우선)
     META_DIR = os.path.join(ROOT, "meta", t)
     UI_TR = os.path.join(TR_DIR, f"ui_prefab.{t}.ko.json")   # 번들 객체 ID 가 빌드마다 달라 게임별
     WORK_DIR = os.path.join(ROOT, "work", t)      # git-ignored: 게임 원문·원본 백업·이미지
@@ -113,6 +115,11 @@ def story_ko(tr_story, line):
 def stem(rel):
     """Addressables 번들 파일명에서 내용 해시 제거: foo.prefab_<32hex>.bundle -> foo.prefab"""
     return re.sub(r"_[0-9a-f]{32}\.bundle$", "", os.path.basename(rel))
+
+
+def loc_tr():
+    """번역표 = 공용 loc.ko.json + 게임별 loc.<T>.ko.json(우선)"""
+    return {**jload(os.path.join(TR_DIR, "loc.ko.json")), **jload(LOC_OWN)}
 
 
 def config():
@@ -341,8 +348,8 @@ def font_report(game):
     """번역에 쓰인 한글 vs 게임 내장 글꼴(TMP 원본 TTF) 커버리지"""
     from fontTools.ttLib import TTFont
     used = set()
-    for f in ("loc.ko.json", "story.ko.json"):
-        for v in jload(os.path.join(TR_DIR, f)).values():
+    for d in (loc_tr(), jload(os.path.join(TR_DIR, "story.ko.json"))):
+        for v in d.values():
             used |= set(HANGUL.findall(v))
     for m in jload(UI_TR).values():
         for v in m.values():
@@ -374,7 +381,7 @@ def cmd_check(a):
     print(f"게임: {game.describe()}")
     types = Types(game)
     _, _, loc, story = load_text(game, types, orig_path(game, game.res))
-    tr_loc, meta_loc = jload(os.path.join(TR_DIR, "loc.ko.json")), jload(os.path.join(META_DIR, "loc.srchash.json"))
+    tr_loc, meta_loc = loc_tr(), jload(os.path.join(META_DIR, "loc.srchash.json"))
     tr_story = jload(os.path.join(TR_DIR, "story.ko.json"))
 
     todo_loc = []
@@ -500,14 +507,22 @@ def cmd_merge(a):
             jsave(UI_TR, tr)
             jsave(os.path.join(META_DIR, "ui_prefab.srchash.json"), meta)
         elif "loc" in base:
-            tr, meta = jload(os.path.join(TR_DIR, "loc.ko.json")), jload(os.path.join(META_DIR, "loc.srchash.json"))
+            tr, own = jload(os.path.join(TR_DIR, "loc.ko.json")), jload(LOC_OWN)
+            meta = jload(os.path.join(META_DIR, "loc.srchash.json"))
+            others = [jload(os.path.join(ROOT, "meta", t, "loc.srchash.json")) for t in TARGETS if t != TARGET]
             for k, v in d.items():
                 if k not in loc:
                     print(f"  [경고] 게임에 없는 키: {k}")
                     continue
-                tr[k] = v
-                meta[k] = h12(src_of(loc[k]))
+                hs = h12(src_of(loc[k]))
+                if k in own or any(k in m and m[k] != hs for m in others):
+                    own[k] = v      # 다른 게임에선 원문이 달라 공용 번역을 덮으면 안 됨
+                else:
+                    tr[k] = v
+                meta[k] = hs
             jsave(os.path.join(TR_DIR, "loc.ko.json"), tr)
+            if own:
+                jsave(LOC_OWN, own)
             jsave(os.path.join(META_DIR, "loc.srchash.json"), meta)
         else:
             sys.exit(f"[오류] 파일명에 loc / story / ui_prefab 중 하나가 들어가야 합니다: {f}")
@@ -553,7 +568,7 @@ def cmd_images(a):
 def build_resources(game, types, allow_stale, out_dir, stats):
     rel = game.res
     env, objs, loc, _ = load_text(game, types, orig_path(game, rel))
-    tr_loc, meta_loc = jload(os.path.join(TR_DIR, "loc.ko.json")), jload(os.path.join(META_DIR, "loc.srchash.json"))
+    tr_loc, meta_loc = loc_tr(), jload(os.path.join(META_DIR, "loc.srchash.json"))
     tr_story = jload(os.path.join(TR_DIR, "story.ko.json"))
 
     applied = stale = untr = 0
