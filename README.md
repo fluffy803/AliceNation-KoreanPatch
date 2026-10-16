@@ -2,7 +2,7 @@
 
 ![한국어 패치 적용 타이틀 화면](images/title.jpg)
 
-Steam **Alice Nation**(爱丽丝与彼岸, 앨리스와 피안)과 **Alice Nation Demo**의 비공식 한국어 패치입니다.
+Steam **Alice Nation**(爱丽丝与彼岸, 앨리스와 피안)의 비공식 한국어 패치입니다.
 
 ## 설치
 
