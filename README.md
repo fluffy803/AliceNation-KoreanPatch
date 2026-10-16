@@ -10,10 +10,9 @@ Steam **Alice Nation**(爱丽丝与彼岸, 앨리스와 피안)과 **Alice Natio
 
 1. [Releases](../../releases)에서 게임에 맞는 zip을 받습니다.
    - 정식판: `AliceNation_KoreanPatch_v*.zip`
-   - 데모: `AliceNationDemo_KoreanPatch_v*.zip` (릴리스 이름이 `demo-`로 시작)
-2. 압축을 게임 폴더(`alicenation.exe`가 있는 폴더)에 풀어서 덮어씁니다.
-   - Steam 라이브러리 → 게임 우클릭 → 관리 → 로컬 파일 보기
-3. 게임 메뉴의 [언어]에서 **한국어**를 고릅니다(English 자리).
+   - 데모: `AliceNationDemo_KoreanPatch_v*.zip`
+2. 압축을 게임 폴더(`alicenation.exe`가 있는 폴더)에 풀고 덮어씁니다.
+3. 게임 메뉴의 [언어]에서 **한국어**를 선택합니다.
 
 ## 면책
 
