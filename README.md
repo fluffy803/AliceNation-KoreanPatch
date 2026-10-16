@@ -1,4 +1,4 @@
-# Alice Nation 한국어 패치
+# 앨리스와 피안(Alice Nation) 한국어 패치
 
 ![한국어 패치 적용 타이틀 화면](images/title.jpg)
 
