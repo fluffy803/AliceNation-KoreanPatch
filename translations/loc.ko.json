@@ -1478,6 +1478,7 @@
  "Label_InfoSkill": "<size=85%>행동 카드</size>",
  "Label_Language": "언어",
  "Label_Load": "불러오기",
+ "Label_NoSave": "저장 없음",
  "Label_Other1": "<color=#9F37D2>{0} 에게 카드 {1} 사용 </color>",
  "Label_Other10": "이벤트 생성",
  "Label_Other11": "특성 획득",
