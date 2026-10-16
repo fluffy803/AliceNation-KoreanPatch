@@ -107,6 +107,26 @@ def split_dir(t):
     return "", t
 
 
+CMDTOK = re.compile(r"\s(?:title|info|beforeEnd|end|call|offset):\S")
+
+
+def cmd_parts(body):
+    """게임 명령 줄이면 화면에 보이는 문구들을, 아니면 None.
+    명령 줄은 띄어쓰기로 칸을 나누므로(예: '카드목록 title:제목 info:설명 beforeEnd:… end:…',
+    '선택지 문구 call:스크립트') 줄 자체는 원문 그대로 두고, 문구는 게임이 번역표(중국어 원문 키)에서
+    찾아 바꾼다. 번역은 문구별로 story.ko.json(본문 해시 키)에 넣는다."""
+    if not CMDTOK.search(body):
+        return None
+    parts = []
+    for tok in body.split(" "):
+        m = re.match(r"^(\w+):(.*)$", tok)
+        if m and m.group(1) in ("title", "info"):
+            parts.append(m.group(2))
+        elif not m and not parts and CJK.search(tok):   # 맨 앞 칸 = 선택지 문구
+            parts.append(tok)
+    return [p for p in parts if CJK.search(p)]
+
+
 def story_ko(tr_story, line):
     """스토리 번역 조회: 줄 전체 해시(같은 본문을 장면마다 다르게 번역한 경우) -> 본문 해시 순"""
     return tr_story.get(h12(line)) or tr_story.get(h12(split_dir(line)[1]))
@@ -408,6 +428,18 @@ def cmd_check(a):
             if not c or not CJK.search(c):
                 continue
             d, body = split_dir(c)
+            parts = cmd_parts(body)
+            if parts is not None:   # 게임 명령 줄: 줄은 그대로 두고 화면 문구만 번역 대상으로
+                for p in parts:
+                    j = h12(p)
+                    if j in tr_story:
+                        tm.setdefault(p, dict(ko=tr_story[j], key=name))
+                        story_src[j] = dict(cn=p, dir="", script=name)
+                    elif j not in seen:
+                        seen.add(j)
+                        todo_story.append(dict(id=j, script=name, n=n, dir="", cn=p, en=en_by_text.get(p, ""),
+                                               status="신규(명령 줄 문구)", ctx=[dict(dir="", cn=body, ko="")]))
+                continue
             i = h12(body)
             ko = story_ko(tr_story, c)
             if ko is not None:
@@ -588,7 +620,7 @@ def build_resources(game, types, allow_stale, out_dir, stats):
             untr += 1
         return v.get("EN") or src_of(v) or k
 
-    s_app = s_untr = 0
+    s_app = s_untr = s_cmd = 0
     for c, o in objs:
         t = o.read_typetree(nodes=types.nodes(c))
         if c == "Config.LocalizationConfig":
@@ -602,6 +634,9 @@ def build_resources(game, types, allow_stale, out_dir, stats):
                     if not s or not CJK.search(s):
                         continue
                     pre, body = split_dir(s)
+                    if cmd_parts(body) is not None:   # 게임 명령 줄은 원문 그대로(문구는 번역표 쪽에서 바뀜)
+                        s_cmd += 1
+                        continue
                     ko = story_ko(tr_story, s)
                     if ko is None:
                         s_untr += 1
@@ -631,10 +666,10 @@ def build_resources(game, types, allow_stale, out_dir, stats):
         f.write(data)
     _, _, loc2, story2 = load_text(game, types, out)
     left = sum(1 for L in story2.values() for c in L if CJK.search(split_dir(c)[1]))
-    if len(loc2) != len(loc) or left != s_untr:
-        sys.exit(f"[오류] resources.assets 재로드 검증 실패 (키 {len(loc2)}/{len(loc)}, 중국어 잔존 {left}/{s_untr})")
+    if len(loc2) != len(loc) or left != s_untr + s_cmd:
+        sys.exit(f"[오류] resources.assets 재로드 검증 실패 (키 {len(loc2)}/{len(loc)}, 중국어 잔존 {left}/{s_untr + s_cmd})")
     stats["loc"] = dict(applied=applied, stale_skipped=stale, untranslated=untr)
-    stats["story"] = dict(applied=s_app, untranslated=s_untr)
+    stats["story"] = dict(applied=s_app, untranslated=s_untr, command_kept=s_cmd)
     return [rel]
 
 

@@ -1,9 +1,9 @@
 {
  "demo": {
-  "built": "2026-10-15",
+  "built": "2026-10-16",
   "game_buildid": "25911555",
   "package": "AliceNationDemo",
-  "patch_version": "0.9.12",
+  "patch_version": "0.9.13",
   "stats": {
    "catalog_crc_disabled": 269,
    "font": {
@@ -11,7 +11,7 @@
      "OPPOSans-MSDF"
     ],
     "hangul_missing": 0,
-    "hangul_used": 1082,
+    "hangul_used": 1180,
     "korean_font": "Lolita SDF"
    },
    "images": {
@@ -24,7 +24,8 @@
     "untranslated": 0
    },
    "story": {
-    "applied": 2412,
+    "applied": 2382,
+    "command_kept": 30,
     "untranslated": 0
    },
    "ui_prefab": {
@@ -36,9 +37,9 @@
  },
  "full": {
   "built": "2026-10-16",
-  "game_buildid": "25984771",
+  "game_buildid": "25985307",
   "package": "AliceNation",
-  "patch_version": "1.0.4",
+  "patch_version": "1.0.5",
   "stats": {
    "catalog_crc_disabled": 370,
    "font": {
@@ -59,7 +60,8 @@
     "untranslated": 0
    },
    "story": {
-    "applied": 5992,
+    "applied": 5962,
+    "command_kept": 30,
     "untranslated": 0
    },
    "ui_prefab": {
