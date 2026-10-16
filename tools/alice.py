@@ -525,8 +525,11 @@ def cmd_merge(a):
         base = os.path.basename(f)
         if "story" in base:
             tr = jload(os.path.join(TR_DIR, "story.ko.json"))
+            src = {x["id"]: x["cn"] for x in jload(os.path.join(WORK_DIR, "todo_story.json"), [])}
             for k, v in d.items():
                 tr[k] = split_dir(v)[1]
+                if k in src and tr[k].count(":") > src[k].count(":"):   # 게임이 반각 콜론을 명령(키:값)으로 읽을 수 있음
+                    print(f"  [경고] 원문에 없는 반각 콜론(:) — 전각 '：'로 바꾸세요: {k} {tr[k][:40]}")
             jsave(os.path.join(TR_DIR, "story.ko.json"), tr)
         elif "ui_prefab" in base:
             tr, meta = jload(UI_TR), jload(os.path.join(META_DIR, "ui_prefab.srchash.json"))
