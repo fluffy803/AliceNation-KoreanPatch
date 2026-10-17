@@ -1480,6 +1480,7 @@
  "Label_InfoSkill": "<size=85%>행동 카드</size>",
  "Label_Language": "언어",
  "Label_Load": "불러오기",
+ "Label_NextChapter": "다음 장으로 넘어갑니다. 완료하지 않은 서브 임무는 종료됩니다.（뭐, 별일은 아니지만）",
  "Label_NoSave": "저장 없음",
  "Label_Other1": "<color=#9F37D2>{0} 에게 카드 {1} 사용 </color>",
  "Label_Other10": "이벤트 생성",
