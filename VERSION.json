@@ -37,9 +37,9 @@
  },
  "full": {
   "built": "2026-10-17",
-  "game_buildid": "26006503",
+  "game_buildid": "26006830",
   "package": "AliceNation",
-  "patch_version": "1.0.9",
+  "patch_version": "1.0.10",
   "stats": {
    "catalog_crc_disabled": 370,
    "font": {
