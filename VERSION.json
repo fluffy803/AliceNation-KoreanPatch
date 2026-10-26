@@ -37,9 +37,9 @@
  },
  "full": {
   "built": "2026-10-26",
-  "game_buildid": "26200425",
+  "game_buildid": "26208729",
   "package": "AliceNation",
-  "patch_version": "1.0.29",
+  "patch_version": "1.0.30",
   "stats": {
    "catalog_crc_disabled": 370,
    "font": {
@@ -47,7 +47,7 @@
      "OPPOSans-MSDF"
     ],
     "hangul_missing": 0,
-    "hangul_used": 1180,
+    "hangul_used": 1181,
     "korean_font": "Lolita SDF"
    },
    "images": {
@@ -60,7 +60,7 @@
     "untranslated": 0
    },
    "story": {
-    "applied": 5948,
+    "applied": 5946,
     "command_kept": 24,
     "untranslated": 0
    },
