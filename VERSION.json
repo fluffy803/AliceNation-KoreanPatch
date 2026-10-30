@@ -36,10 +36,10 @@
   "steam_appid": "4556260"
  },
  "full": {
-  "built": "2026-10-26",
-  "game_buildid": "26208729",
+  "built": "2026-10-30",
+  "game_buildid": "26301409",
   "package": "AliceNation",
-  "patch_version": "1.0.30",
+  "patch_version": "1.0.31",
   "stats": {
    "catalog_crc_disabled": 370,
    "font": {
